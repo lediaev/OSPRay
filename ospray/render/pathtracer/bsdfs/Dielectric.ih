@@ -190,7 +190,7 @@ inline void Dielectric_Constructor(varying Dielectric* uniform self, uniform Sha
                    Dielectric_eval, Dielectric_sample,
                    frame);
   self->eta = eta;
-  self->dgeom = dg;
+  self->dgeom = dg;// We need access to both the shading and geometric normals, and later the texture coords for bump/normal maps.
 }
 
 //inline varying BSDF* uniform Dielectric_create(uniform ShadingContext* uniform ctx, const varying linear3f* uniform frame,
@@ -202,8 +202,6 @@ inline varying BSDF* uniform Dielectric_create(uniform ShadingContext* uniform c
 {
   varying Dielectric* uniform self = (varying Dielectric* uniform)ShadingContext_alloc(ctx, sizeof(Dielectric));
 
-
-  
   Dielectric_Constructor(self, ctx, dg, eta);
   //Dielectric_Constructor(self, frame, eta);
   return &self->super;

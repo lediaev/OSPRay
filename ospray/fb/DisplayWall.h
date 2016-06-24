@@ -21,11 +21,19 @@
   \brief EXPERIMENTAL initial steps to support for a "DisplayCluster" based display wall 
  */
 
+
+
+#ifdef OSPRAY_DISPLAYCLUSTER
+// DisplayCluster
+# include "dcStream.h"
+#endif
+
+
 // ospray
 #include "ospray/fb/PixelOp.h"
 
 // DisplayCluster
-class DcSocket;
+//class DcSocket;
 
 namespace ospray {
 

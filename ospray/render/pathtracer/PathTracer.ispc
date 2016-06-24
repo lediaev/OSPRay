@@ -240,17 +240,17 @@ ScreenSample PathTraceIntegrator_Li(const uniform PathTracer* uniform self,
       foreach_unique(uniMat in dg.material) {
         uniform PathTraceMaterial* uniform m = (uniform PathTraceMaterial *)uniMat;
         if (m != NULL) {
-          Lw = Lw * m->getAbsorption(m, previousDg, ray.t);
+          Lw = Lw * m->getAbsorption(m, dg, previousDg, ray.t);
         }
       }
     }
 
     // update currentMedium if we hit a medium interface 
-    // TODO: support nested dielectrics
+    // TODO: support nested (overlapping) dielectrics
     if (fs.type & BSDF_TRANSMISSION) {
 
-      // This is a quick fix for glass. This only works if all solid objects are disjoint 
-      // (some space is between them and they don't overlap).
+      // This is a quick fix for glass. This only works if all solid translucent objects
+      // are disjoint (some space is between them and they don't overlap).
       insideSolid = !insideSolid;
 
       foreach_unique(uniMat in dg.material) {

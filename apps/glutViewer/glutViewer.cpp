@@ -46,6 +46,7 @@ void parseForDisplayWall(int ac, const char **&av, ospray::OSPGlutViewer &v)
       displayWall.streamName = av[++i];
       displayWall.size.x     = atof(av[++i]);
       displayWall.size.y     = atof(av[++i]);
+      
       v.setDisplayWall(displayWall);
     }
   }
@@ -53,6 +54,11 @@ void parseForDisplayWall(int ac, const char **&av, ospray::OSPGlutViewer &v)
 
 int main(int ac, const char **av)
 {
+
+    //std::string a;
+    //std::cout << "Type a character to continue\n";
+    //std::cin >> a;
+
   ospInit(&ac,av);
   ospray::glut3D::initGLUT(&ac,av);
 

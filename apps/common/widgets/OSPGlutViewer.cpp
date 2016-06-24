@@ -121,6 +121,9 @@ void OSPGlutViewer::reshape(const vec2i &newSize)
   m_fb = cpp::FrameBuffer(osp::vec2i{newSize.x, newSize.y}, OSP_FB_SRGBA,
                           OSP_FB_COLOR | OSP_FB_DEPTH | OSP_FB_ACCUM);
 
+  //m_fb = cpp::FrameBuffer(osp::vec2i{newSize.x, newSize.y}, OSP_FB_RGBA8,
+  //                        OSP_FB_COLOR | OSP_FB_DEPTH | OSP_FB_ACCUM);
+
   m_fb.clear(OSP_FB_ACCUM);
 
   /*! for now, let's just attach the pixel op to the _main_ frame

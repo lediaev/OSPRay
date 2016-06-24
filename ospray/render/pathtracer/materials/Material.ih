@@ -48,7 +48,8 @@ typedef void (*PathTraceMaterial_SelectNextMediumFunc)(const uniform PathTraceMa
 
 typedef vec3f (*PathTraceMaterial_GetAbsorptionFunc)(
   const uniform PathTraceMaterial* uniform self,
-  const DifferentialGeometry& dg, 
+  const DifferentialGeometry& current_dg, 
+  const DifferentialGeometry& previous_dg, 
   const float & distance);
 
 struct PathTraceMaterial

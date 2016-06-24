@@ -76,7 +76,8 @@ void Glass_selectNextMedium(const uniform PathTraceMaterial* uniform super,
 }
 
 vec3f Glass_getAbsorption(const uniform PathTraceMaterial* uniform material,
-                          const DifferentialGeometry& dg, 
+                          const DifferentialGeometry& current_dg, 
+                          const DifferentialGeometry& previous_dg, 
                           const float & distance)
 {
     const uniform Glass* uniform self = (const uniform Glass* uniform)material;
@@ -92,9 +93,18 @@ vec3f Glass_getAbsorption(const uniform PathTraceMaterial* uniform material,
         // to be view-dependent. As you move the camera the colors 
         // will change dynamically. This is fun, but entirely not physically correct.
         // The correct thing is to have a 3D texture with ray-marching through
-        // the solid to integrate the absorption, and be view-independent.
+        // the solid to integrate the absorption, similar (or identical?) to volume rendering.
 
-        vec3f color = get3f(self->colorMap, dg.st);
+        vec3f color1 = get3f(self->colorMap, previous_dg.st);
+        vec3f color2 = get3f(self->colorMap, current_dg.st);
+
+        vec3f color;// = 0.5*(color1 + color2);
+        //color = color1;
+        //color = color2;
+
+        color = make_vec3f(0.5*(color1.x + color2.x),0.5*(color1.y + color2.y),0.5*(color1.z + color2.z));
+
+        //print("color = % % % , color1 = % % % , color2 = % % %\n\n\n", color.x, color.y, color.z, color1.x, color1.y, color1.z, color2.x, color2.y, color2.z);
 
         if (self->absorptionDistance > 0) {
             if (color.x > 0)

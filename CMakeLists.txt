@@ -70,6 +70,9 @@ SET(OSPRAY_BINARY_DIR ${PROJECT_BINARY_DIR})
 SET(LIBRARY_OUTPUT_PATH ${OSPRAY_BINARY_DIR})
 SET(EXECUTABLE_OUTPUT_PATH ${OSPRAY_BINARY_DIR})
 
+# LEDIAEV
+SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 ##############################################################
 # CMake modules and macro files
 ##############################################################

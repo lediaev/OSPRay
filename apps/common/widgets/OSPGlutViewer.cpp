@@ -116,6 +116,7 @@ void OSPGlutViewer::setDisplayWall(const OSPGlutViewer::DisplayWall &dw)
 
 void OSPGlutViewer::reshape(const vec2i &newSize)
 {
+
   Glut3DWidget::reshape(newSize);
   m_windowSize = newSize;
   m_fb = cpp::FrameBuffer(osp::vec2i{newSize.x, newSize.y}, OSP_FB_SRGBA,
@@ -131,22 +132,23 @@ void OSPGlutViewer::reshape(const vec2i &newSize)
       of the proper (much higher) size, but for now let's just use
       the existing one... */
   if (m_useDisplayWall && displayWall.fb.handle() != m_fb.handle()) {
-    PRINT(displayWall.size);
-    displayWall.fb =
-        ospray::cpp::FrameBuffer((const osp::vec2i&)displayWall.size,
-                                 OSP_FB_NONE,
-                                 OSP_FB_COLOR | OSP_FB_DEPTH | OSP_FB_ACCUM);
+      //PRINT(displayWall.size);
+      displayWall.fb =
+              ospray::cpp::FrameBuffer((const osp::vec2i&)displayWall.size,
+                                       OSP_FB_NONE,
+                                       //OSP_FB_SRGBA,
+                                       OSP_FB_COLOR | OSP_FB_DEPTH | OSP_FB_ACCUM);
 
-    displayWall.fb.clear(OSP_FB_ACCUM);
+      displayWall.fb.clear(OSP_FB_ACCUM);
 
-    if (displayWall.po.handle() == nullptr) {
-      displayWall.po = ospray::cpp::PixelOp("display_wall");
-      displayWall.po.set("hostname", displayWall.hostname);
-      displayWall.po.set("streamName", displayWall.streamName);
-      displayWall.po.commit();
-    }
+      if (displayWall.po.handle() == nullptr) {
+          displayWall.po = ospray::cpp::PixelOp("display_wall");
+          displayWall.po.set("hostname", displayWall.hostname);
+          displayWall.po.set("streamName", displayWall.streamName);
+          displayWall.po.commit();
+      }
 
-    displayWall.fb.setPixelOp(displayWall.po);
+      displayWall.fb.setPixelOp(displayWall.po);
   }
 
   m_camera.set("aspect", viewPort.aspect);

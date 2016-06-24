@@ -89,7 +89,11 @@ void DisplayWallPO::Instance::postAccum(Tile &tile)
     if(!dcSocket)
         return;
 
+    int rank=-1;
+    //MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+    //std::cout << "postAccum rank = " << rank << "\n";
 
+    //dcStreamReset(dcSocket);
 
     // Crashing
     // DisplayWallPO::Instance::postAccum --> dcStreamSend --> dcStreamSendJpeg --> vectorIiSaIiEE19_M_emplace_back_aux
@@ -182,8 +186,6 @@ void DisplayWallPO::Instance::postAccum(Tile &tile)
         }*/
 
 
-
-
     int imageX = tile.region.lower.x;
     int imageY = tile.fbSize.y-tile.region.upper.y;
     int imageWidth = tile.fbSize.x;
@@ -194,6 +196,13 @@ void DisplayWallPO::Instance::postAccum(Tile &tile)
     int height = TILE_SIZE;
     int sourceIndex = tile.region.lower.y*tile.fbSize.x + tile.region.lower.x;
     //int sourceIndex = (int)((long int)(tile.region.lower.y)* (long int)(tile.fbSize.x) + (long int)(tile.region.lower.x));
+
+    //imageX = 128;
+    //imageY = 128;
+
+    if (rank == 1) {
+        //imageY -= 128;
+    }
 
     if (0) {
     printf("\nimageX = %d, imageY = %d, imageWidth = %d, imageHeight = %d, imagePitch = %d, width=height = %d, sourceIndex = %d\n\n",

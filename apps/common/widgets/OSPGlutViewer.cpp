@@ -135,8 +135,8 @@ void OSPGlutViewer::reshape(const vec2i &newSize)
       //PRINT(displayWall.size);
       displayWall.fb =
               ospray::cpp::FrameBuffer((const osp::vec2i&)displayWall.size,
-                                       OSP_FB_NONE,
-                                       //OSP_FB_SRGBA,
+                                       //OSP_FB_NONE,
+                                       OSP_FB_SRGBA,
                                        OSP_FB_COLOR | OSP_FB_DEPTH | OSP_FB_ACCUM);
 
       displayWall.fb.clear(OSP_FB_ACCUM);

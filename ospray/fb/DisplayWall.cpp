@@ -106,7 +106,7 @@ void DisplayWallPO::Instance::postAccum(Tile &tile)
     //dcSocket = dcStreamConnect(hostname);
 
     int rank=-1;
-    MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+    //MPI_Comm_rank(MPI_COMM_WORLD,&rank);
     //std::cout << "postAccum rank = " << rank << "\n";
 
     //dcStreamReset(dcSocket);

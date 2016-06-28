@@ -43,7 +43,10 @@ namespace ospray {
     size_t numMyTiles()  const { return myTiles.size(); }
 
     int accumId;
-    float *tileErrorBuffer; /*!< holds error per tile, for variance estimation / stopping */
+
+    //! holds error per tile, for variance estimation / stopping
+    float *tileErrorBuffer;
+
     int32 accumID(const vec2i &) override { return accumId; }
     float tileError(const vec2i &tile) override;
     float endFrame(const float errorThreshold) override;
@@ -78,13 +81,13 @@ namespace ospray {
       necessariy 'end-begin'. 'color' and 'depth' arrays are always
       alloc'ed in TILE_SIZE pixels */
     struct TileDesc {
-      ALIGNED_STRUCT;
+      ALIGNED_STRUCT
 
       /*! constructor */
       TileDesc(DistributedFrameBuffer *dfb,
-                 const vec2i &begin,
-                 size_t tileID,
-                 size_t ownerID);
+               const vec2i &begin,
+               size_t tileID,
+               size_t ownerID);
 
       /*! returns whether this tile is one of this particular
           node's tiles */
@@ -112,7 +115,7 @@ namespace ospray {
 
       /*! returns whether this tile is one of this particular
           node's tiles */
-      virtual bool mine() const { return true; }
+      bool mine() const override { return true; }
 
       /*! called exactly once for each ospray::Tile that needs to get
           written into / composited into this dfb tile */
@@ -149,7 +152,7 @@ namespace ospray {
       {}
 
       /*! called exactly once at the beginning of each frame */
-      virtual void newFrame();
+      void newFrame() override;
 
       /*! called exactly once for each ospray::Tile that needs to get
         written into / composited into this dfb tile.
@@ -159,7 +162,7 @@ namespace ospray {
         accumulating the tile data and telling the parent that we're
         done.
       */
-      virtual void process(const ospray::Tile &tile);
+      void process(const ospray::Tile &tile) override;
     };
 
     // -------------------------------------------------------
@@ -176,11 +179,11 @@ namespace ospray {
       {}
 
       /*! called exactly once at the beginning of each frame */
-      virtual void newFrame();
+      void newFrame() override;
 
       /*! called exactly once for each ospray::Tile that needs to get
           written into / composited into this dfb tile */
-      virtual void process(const ospray::Tile &tile);
+      void process(const ospray::Tile &tile) override;
 
       /*! number of input tiles that have been composited into this
           tile */
@@ -208,11 +211,11 @@ namespace ospray {
       {}
 
       /*! called exactly once at the beginning of each frame */
-      virtual void newFrame();
+      void newFrame() override;
 
       /*! called exactly once for each ospray::Tile that needs to get
           written into / composited into this dfb tile */
-      virtual void process(const ospray::Tile &tile);
+      void process(const ospray::Tile &tile) override;
 
       struct BufferedTile {
         ospray::Tile tile;
@@ -239,8 +242,7 @@ namespace ospray {
         properly call the post-op(s), properly send final color data
         to the master (if required), and properly do the bookkeeping
         that this tile is now done. */
-    virtual void tileIsCompleted(TileData *tile);
-
+    void tileIsCompleted(TileData *tile);
 
     /*! message sent to the master when a tile is finished. Todo:
         compress the color data */
@@ -382,6 +384,7 @@ namespace ospray {
     FrameMode frameMode;
     void setFrameMode(FrameMode newFrameMode) ;
     void createTiles();
+    TileData *createTile(const vec2i &xy, size_t tileID, size_t ownerID);
     void freeTiles();
 
     /*! number of tiles written this frame */
@@ -403,8 +406,8 @@ namespace ospray {
 
     /*! mutex used to protect all threading-sensitive data in this
         object */
-
     Mutex mutex;
+
     //! set to true when the frame becomes 'active', and write tile
     //! messages can be consumed.
     bool frameIsActive;

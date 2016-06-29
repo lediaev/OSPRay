@@ -29,6 +29,13 @@
 #include <sstream>
 #include <ostream>
 
+//#define USE_MUTEX
+
+#ifdef USE_MUTEX
+#include <mutex>
+std::mutex mut_socket;
+#endif
+
 namespace ospray {
 
 DisplayWallPO::Instance::Instance(DisplayWallPO *po, FrameBuffer *fb)
@@ -44,7 +51,9 @@ DisplayWallPO::Instance::Instance(DisplayWallPO *po, FrameBuffer *fb)
     std::cerr << "connecting to hostname " << hostname << " for stream name " << streamName << " from rank " << rank << std::endl;
 
     // connect to DisplayCluster at given hostname.
+   // mut_socket.lock();
     dcSocket = dcStreamConnect(hostname);
+   // mut_socket.unlock();
 
     if(!dcSocket)
         std::cerr << "could not connect to DisplayCluster at " << hostname << std::endl;
@@ -97,133 +106,54 @@ std::string IntegerToString (int i)
 void DisplayWallPO::Instance::postAccum(Tile &tile)
 {
 #ifdef OSPRAY_DISPLAYCLUSTER
-    if(!dcSocket)
-        return;
 
-    //dcStreamDisconnect(dcSocket);
-    //const char *hostname = "tcg-vis-ivb-00";//getParamString("hostname", "localhost");
-    //const char *streamName = getParamString("streamName", "ospray");
-    //dcSocket = dcStreamConnect(hostname);
+#ifdef USE_MUTEX
+    mut_socket.lock();
+#endif
+
+    if(!dcSocket) {
+#ifdef USE_MUTEX
+        mut_socket.unlock();
+#endif
+        return;
+    }
 
     int rank=-1;
     //MPI_Comm_rank(MPI_COMM_WORLD,&rank);
     //std::cout << "postAccum rank = " << rank << "\n";
 
-    //dcStreamReset(dcSocket);
-
-    // Crashing
-    // DisplayWallPO::Instance::postAccum --> dcStreamSend --> dcStreamSendJpeg --> vectorIiSaIiEE19_M_emplace_back_aux
-    //return;
-
+    int region_lower_y = tile.region.lower.y;
+    int region_upper_y = tile.region.upper.y;
+    int region_lower_x = tile.region.lower.x;
     int ID = tile.accumID;
-    int imageX = tile.region.lower.x;
-    int imageY = tile.fbSize.y-tile.region.upper.y;
     int imageWidth = tile.fbSize.x;
     int imageHeight = tile.fbSize.y;
+
+    int imageX = region_lower_x;
+    int imageY = imageHeight - region_upper_y;
+
     int imagePitch = 4*TILE_SIZE;
     PIXEL_FORMAT pixelFormat = RGBA;
     int width = TILE_SIZE;
     int height = TILE_SIZE;
+
+    double d_region_lower_y = region_lower_y;
+    double d_fbSize_x = imageWidth;
+    double d_region_lower_x = region_lower_x;
+    double d_sourceIndex = d_region_lower_y*d_fbSize_x + d_region_lower_x;
+
+    long int l_region_lower_y = region_lower_y;
+    long int l_fbSize_x = imageWidth;
+    long int l_region_lower_x = region_lower_x;
+    long int l_sourceIndex = l_region_lower_y*l_fbSize_x + l_region_lower_x;
+
     int sourceIndex = tile.region.lower.y*tile.fbSize.x + tile.region.lower.x;
+    int sourceIndex2 = tile.region.lower.y*tile.fbSize.x + tile.region.lower.x;
+
+    //std::cerr << "\n\n++++ sourceIndex = " << sourceIndex << ", l_sourceIndex = " << l_sourceIndex << "\n";
+
+    int sourceIndex_i = region_lower_y*imageWidth + region_lower_x;
     //int sourceIndex = (int)((long int)(tile.region.lower.y)* (long int)(tile.fbSize.x) + (long int)(tile.region.lower.x));
-
-
-    if (0 && ID % 1 == 0) {
-
-        int nx = imageWidth / TILE_SIZE;
-        int i_tile = imageX / TILE_SIZE;
-        int j_tile = imageY / TILE_SIZE;
-        int dig = 1 + i_tile + j_tile * nx;
-
-        //unsigned char ppm[3*TILE_SIZE*TILE_SIZE];
-
-        FILE * i_file;
-        std::string file_base = "/nfshome/lmlediae/Desktop/tiles/", file_type = ".ppm", file_name;
-        file_name = file_base + "ID" + IntegerToString(ID) + "_tile" + IntegerToString(dig) + "_rank" + IntegerToString(rank) + file_type;
-        i_file = fopen(file_name.c_str(), "wb");
-
-        bool flipped = true;
-        //bool flipped = false;
-
-        if (i_file) {
-            fprintf(i_file,"P6\n%d %d\n255\n",TILE_SIZE,TILE_SIZE);
-            size_t pixelID = 0;
-
-
-            if (flipped) {
-                int j_high = 63;
-                for (int iy=j_high; iy>=0; iy--) {
-                    for (int ix=0; ix<TILE_SIZE; ix++) {
-                        pixelID = ix + iy*TILE_SIZE;
-
-                        if (pixelID < 0 || pixelID >= TILE_SIZE*TILE_SIZE) {
-                            printf("pixel index out of bounds i=%d, j=%d, id=%d, tile size = %d\n",ix,iy, pixelID, TILE_SIZE);
-                            exit(1);
-                        }
-
-                        float r = tile.r[pixelID];
-                        float g = tile.g[pixelID];
-                        float b = tile.b[pixelID];
-                        float a = tile.a[pixelID];
-
-                        float gamma = 1.0/2.2;
-                        r = powf(r,gamma);
-                        g = powf(g,gamma);
-                        b = powf(b,gamma);
-
-                        int c_r = r*255;
-                        int c_g = g*255;
-                        int c_b = b*255;
-                        if (c_r < 0) c_r = 0;
-                        if (c_r > 255) c_r = 255;
-                        if (c_g < 0) c_g = 0;
-                        if (c_g > 255) c_g = 255;
-                        if (c_b < 0) c_b = 0;
-                        if (c_b > 255) c_b = 255;
-
-                        unsigned char d[3] = {c_r, c_g, c_b};
-
-                        fwrite(d,3,1,i_file);
-                    }
-                }
-            } else {
-                for (size_t iy=0; iy<TILE_SIZE; iy++) {
-                    for (size_t ix=0; ix<TILE_SIZE; ix++) {
-                        float r = tile.r[pixelID];
-                        float g = tile.g[pixelID];
-                        float b = tile.b[pixelID];
-                        float a = tile.a[pixelID];
-
-                        float gamma = 1.0/2.2;
-                        r = powf(r,gamma);
-                        g = powf(g,gamma);
-                        b = powf(b,gamma);
-
-                        int c_r = r*255;
-                        int c_g = g*255;
-                        int c_b = b*255;
-                        if (c_r < 0) c_r = 0;
-                        if (c_r > 255) c_r = 255;
-                        if (c_g < 0) c_g = 0;
-                        if (c_g > 255) c_g = 255;
-                        if (c_b < 0) c_b = 0;
-                        if (c_b > 255) c_b = 255;
-
-                        unsigned char d[3] = {c_r, c_g, c_b};
-
-                        fwrite(d,3,1,i_file);
-
-                        ++pixelID;
-                    }
-                }
-            }
-
-            fclose(i_file);
-        } else {
-            std::cout << "Error opening tile iamge file " << file_name << "\n";
-        }
-    }
-
 
     uint32 colorBuffer[TILE_SIZE*TILE_SIZE];
 
@@ -278,7 +208,6 @@ void DisplayWallPO::Instance::postAccum(Tile &tile)
             uint32 i_b = (((uint32)c_b & 0x000000ff) << 16);
             uint32 i_a = (((uint32)c_a & 0x000000ff) << 24);
 
-
             // Convert.
             //colorBuffer[pixelID] = cvt_uint32(col);
 
@@ -286,80 +215,12 @@ void DisplayWallPO::Instance::postAccum(Tile &tile)
 
             colorBuffer[pixelID] = c_packed;
 
-            // Unpack, for comparison.
-            if (0) {
-                float c1,c2,c3,c4;
-                c1 = (c_packed & 0x000000ff);
-                c2 = (c_packed & 0x0000ff00) >> 8;
-                c3 = (c_packed & 0x00ff0000) >> 16;
-                c4 = (c_packed & 0xff000000) >> 24;
-                printf("r[%f, %f] g[%f, %f] b[%f, %f] a[%f, %f]\n",c_r, c1, c_g, c2, c_b, c3, c_a, c4);
-            }
-
-
             ++pixelID;
         }
     }
 
-    /*
-    float colorBufferFloats[4*TILE_SIZE*TILE_SIZE];
-    size_t pixelID = 0;
-    for (size_t iy=0;iy<TILE_SIZE;iy++)
-        for (size_t ix=0;ix<TILE_SIZE;ix++, pixelID++) {
-            colorBufferFloats[4*pixelID + 0] = tile.r[pixelID];
-            colorBufferFloats[4*pixelID + 1] = tile.g[pixelID];
-            colorBufferFloats[4*pixelID + 2] = tile.b[pixelID];
-            colorBufferFloats[4*pixelID + 3] = tile.a[pixelID];
-        }*/
+    DcStreamParameters dcStreamParameters = dcStreamGenerateParameters(streamName, sourceIndex, imageX, imageY, width, height, imageWidth, imageHeight);
 
-
-
-
-    //imageX = 128;
-    //imageY = 128;
-
-    if (rank == 1) {
-        //imageY -= 128;
-    }
-
-    if (0) {
-    printf("\nimageX = %d, imageY = %d, imageWidth = %d, imageHeight = %d, imagePitch = %d, width=height = %d, sourceIndex = %d\n\n",
-              imageX,      imageY,      imageWidth,      imageHeight,      imagePitch,      width,             sourceIndex);
-    }
-    //DcStreamParameters dcStreamGenerateParameters(             std::string name, int sourceIndex,  int x,  int y, int width, int height, int totalWidth, int totalHeight)
-    DcStreamParameters dcStreamParameters = dcStreamGenerateParameters(streamName,     sourceIndex, imageX, imageY,     width,     height,     imageWidth,     imageHeight);
-
-
-
-
-    if (0) {
-
-        int nx = imageWidth / TILE_SIZE;
-        int i_tile = imageX / TILE_SIZE;
-        int j_tile = imageY / TILE_SIZE;
-        int dig = 1 + i_tile + j_tile * nx;
-        unsigned long int uc;
-
-        if (1 <= dig && dig <= 16) {
-            // Read in buffer from digit image.
-            FILE * i_file;
-            std::string file_base = "/nfshome/lmlediae/Desktop/digits_out/n", file_type = ".txt", file_name;
-            file_name = file_base + IntegerToString(dig) + file_type;
-            i_file = fopen(file_name.c_str(), "r");
-
-            if (i_file) {
-                for (int k=0; k<TILE_SIZE*TILE_SIZE; k++) {
-                    fscanf(i_file,"%lu", &uc);
-                    colorBuffer[k] = (uint32)uc;
-                }
-                fclose(i_file);
-            } else {
-                std::cout << "Error opening digit file " << file_name << "\n";
-            }
-        }
-    }
-
-    //bool dcStreamSend(DcSocket * socket,  unsigned char * imageBuffer, int imageX, int imageY, int imageWidth, int imagePitch, int imageHeight, PIXEL_FORMAT pixelFormat, DcStreamParameters parameters)
     bool success = dcStreamSend( dcSocket, (unsigned char *)colorBuffer,      imageX,    imageY,     imageWidth,     imagePitch,     imageHeight,              pixelFormat,            dcStreamParameters);
 
     if(!success) {
@@ -369,6 +230,11 @@ void DisplayWallPO::Instance::postAccum(Tile &tile)
             dcSocket = NULL;
         }
     }
+
+#ifdef USE_MUTEX
+    mut_socket.unlock();
+#endif
+
 #else 
     PRINT(tile.region);
 #endif

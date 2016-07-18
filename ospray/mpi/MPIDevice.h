@@ -17,10 +17,10 @@
 #pragma once
 
 #include "MPICommon.h"
-#include "ospray/api/Device.h"
-#include "ospray/mpi/command.h"
+#include "api/Device.h"
+#include "mpi/command.h"
 #include "CommandStream.h"
-#include "ospray/common/Managed.h"
+#include "common/Managed.h"
 
 /*! \file mpidevice.h Implements the "mpi" device for mpi rendering */
 
@@ -37,6 +37,7 @@ namespace ospray {
       /*! constructor */
       MPIDevice(// AppMode appMode, OSPMode ospMode,
                 int *_ac=NULL, const char **_av=NULL);
+      virtual ~MPIDevice();
 
       /*! create a new frame buffer */
       OSPFrameBuffer

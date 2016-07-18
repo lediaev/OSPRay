@@ -18,11 +18,10 @@
 #include "DistributedFrameBuffer_TileTypes.h"
 #include "DistributedFrameBuffer_ispc.h"
 
-#include "ospray/common/tasking/async.h"
-#include "ospray/common/tasking/parallel_for.h"
+#include "common/tasking/async.h"
+#include "common/tasking/parallel_for.h"
 
 #ifdef _WIN32
-#  define NOMINMAX
 #  include <windows.h> // for Sleep
 #endif
 
@@ -278,7 +277,7 @@ namespace ospray {
     frameDoneCond.wait(lock, [&]{return frameIsDone;});
   }
 
-  void DistributedFrameBuffer::processMessage(MasterTileMessage *msg)
+  void DFB::processMessage(MasterTileMessage *msg)
   {
     { /* nothing to do for 'none' tiles */ }
     if (hasVarianceBuffer && (accumId & 1) == 1)
@@ -366,8 +365,9 @@ namespace ospray {
                    numTiles.x*numTiles.y));
       }
 
-      if (numTilesCompletedByMe == myTiles.size())
+      if (numTilesCompletedByMe == myTiles.size()) {
         closeCurrentFrame();
+      }
     }
   }
 
@@ -409,6 +409,15 @@ namespace ospray {
     DBG(printf("rank %i CLOSES frame\n",mpi::world.rank));
     frameIsActive = false;
     frameIsDone   = true;
+
+    if (IamTheMaster()) {
+      /* do nothing */
+    } else {
+      if (pixelOp) { 
+        pixelOp->endFrame();
+      }
+    }
+
     frameDoneCond.notify_all();
   }
 

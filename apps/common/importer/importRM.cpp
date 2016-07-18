@@ -17,8 +17,8 @@
 // own
 #include "Importer.h"
 // ospcommon
-#include "common/FileName.h"
-#include "common/sysinfo.h"
+#include "ospcommon/FileName.h"
+#include "ospcommon/sysinfo.h"
 // ospray api
 #include "ospray/ospray.h"
 
@@ -26,10 +26,9 @@
 #include <iostream>
 #include <stdio.h>
 #include <string.h>
-#ifdef __LINUX__
-# include <sched.h>
-#endif
 #include <stdint.h>
+#include <iostream>
+#include <thread>
 #include <atomic>
 #include <mutex>
 
@@ -43,7 +42,7 @@ namespace ospray {
       std::atomic<int> nextPinID;
       int numThreads;
       int timeStep;
-      pthread_t *thread;
+      std::vector<std::thread> threads;
       std::string inFilesDir;
       bool useGZip;
 
@@ -52,8 +51,7 @@ namespace ospray {
       };
 
       RMLoaderThreads(Volume *volume, const std::string &fileName, int numThreads=10) 
-        : volume(volume), nextBlockID(0), thread(NULL), nextPinID(0),
-        numThreads(numThreads)
+        : volume(volume), nextBlockID(0), nextPinID(0), numThreads(numThreads)
       {
         inFilesDir = fileName.substr(0, fileName.rfind('.'));
         std::cout << "Reading LLNL Richtmyer-Meshkov bob from " << inFilesDir
@@ -61,11 +59,8 @@ namespace ospray {
 
         useGZip = (getenv("OSPRAY_RM_NO_GZIP") == NULL);
 
-        const char *slash = rindex(fileName.c_str(),'/');
-        std::string base 
-          = slash != NULL
-          ? std::string(slash+1)
-          : fileName;
+        const size_t slash = fileName.rfind('/');
+        std::string base = slash != std::string::npos ? fileName.substr(slash + 1) : fileName;
 
         int rc = sscanf(base.c_str(),"bob%03d.bob",&timeStep);
         if (rc != 1)
@@ -74,13 +69,12 @@ namespace ospray {
         volume->voxelRange.x = +std::numeric_limits<float>::infinity();
         volume->voxelRange.y = -std::numeric_limits<float>::infinity();
 
-        thread = new pthread_t[numThreads];
-        for (int i=0;i<numThreads;i++)
-          pthread_create(thread+i,NULL,(void*(*)(void*))threadFunc,this);
-
-        void *result = NULL;
-        for (int i=0;i<numThreads;i++){
-          pthread_join(thread[i],&result);
+        threads.reserve(numThreads);
+        for (int i = 0; i < numThreads; ++i) {
+          threads.push_back(std::thread([&](){ run(); }));
+        }
+        for (size_t i = 0; i < threads.size(); ++i) {
+          threads[i].join();
         }
       };
 
@@ -88,12 +82,16 @@ namespace ospray {
         char fileName[10000];
         FILE *file;
         if (useGZip) {
+#ifndef _WIN32
           sprintf(fileName,"%s/d_%04d_%04li.gz",
               fileNameBase.c_str(),timeStep,blockID);
           const std::string cmd = "gunzip -c "+std::string(fileName);
           file = popen(cmd.c_str(),"r");
           if (!file)
             throw std::runtime_error("could not open file in popen command '"+cmd+"'");
+#else
+          throw std::runtime_error("gzipped RM bob's aren't supported on Windows!");
+#endif
         } else {
           sprintf(fileName,"%s/d_%04d_%04li",
               fileNameBase.c_str(),timeStep,blockID);
@@ -110,10 +108,15 @@ namespace ospray {
           throw std::runtime_error("could not read enough data from "+std::string(fileName));
         }
 
-        if (useGZip) 
+        if (useGZip) {
+#ifndef _WIN32
           pclose(file);
-        else
+#else
+          throw std::runtime_error("gzipped RM bob's aren't supported on Windows!");
+#endif
+        } else {
           fclose(file);
+        }
       }
 
       void run() 
@@ -131,11 +134,7 @@ namespace ospray {
           int K = (blockID / 64);
 
 
-          int cpu = -1;
-#ifdef __LINUX__
-          cpu = sched_getcpu();
-#endif
-          printf("[b%i:%i,%i,%i,(%i)]",blockID,I,J,K,cpu);
+          printf("[b%i:%i,%i,%i,(%i)]",blockID,I,J,K,threadID);
           loadBlock(*block,inFilesDir,blockID);
 
           ospcommon::vec2f blockRange(block->voxel[0]);
@@ -152,17 +151,31 @@ namespace ospray {
         }
         delete block;
       }
-
-      static void *threadFunc(void *arg)
-      { ((RMLoaderThreads *)arg)->run(); return NULL; }
-      ~RMLoaderThreads() { delete[] thread; };
     };
 
     // Just import the RM file into some larger scene, just loads the volume
     void importVolumeRM(const FileName &fileName, Volume *volume) {
+      const char *scaleFactorEnv = getenv("OSPRAY_VOLUME_SCALE_FACTOR");
+      if (scaleFactorEnv){
+        std::cout << "#importRM: found OSPRAY_VOLUME_SCALE_FACTOR env-var\n";
+        vec3f scaleFactor;
+        if (sscanf(scaleFactorEnv, "%fx%fx%f", &scaleFactor.x, &scaleFactor.y, &scaleFactor.z) != 3){
+          throw std::runtime_error("Could not parse OSPRAY_RM_SCALE_FACTOR env-var. Must be of format"
+              "<X>x<Y>x<Z> (e.g '1.5x2x0.5')");
+        }
+        std::cout << "#importRM: got OSPRAY_VOLUME_SCALE_FACTOR env-var = {"
+          << scaleFactor.x << ", " << scaleFactor.y << ", " << scaleFactor.z
+          << "}\n";
+        volume->scaleFactor = scaleFactor;
+        ospSetVec3f(volume->handle, "scaleFactor", (osp::vec3f&)volume->scaleFactor);
+      }
+
       // Update the provided dimensions of the volume for the subvolume specified.
       ospcommon::vec3i dims(2048,2048,1920);
       volume->dimensions = dims;
+      if (volume->scaleFactor != vec3f(1.f)) {
+        dims = vec3i(vec3f(dims) * volume->scaleFactor);
+      }
       ospSetVec3i(volume->handle, "dimensions", (osp::vec3i&)dims);
       ospSetString(volume->handle,"voxelType", "uchar");
 
@@ -176,6 +189,7 @@ namespace ospray {
         << ", needed " << (t1-t0) << " seconds" << std::endl;
 
       ospSet2f(volume->handle,"voxelRange",volume->voxelRange.x,volume->voxelRange.y);
+      volume->dimensions = dims;
       volume->bounds = ospcommon::empty;
       volume->bounds.extend(volume->gridOrigin);
       volume->bounds.extend(volume->gridOrigin+ vec3f(volume->dimensions) * volume->gridSpacing);

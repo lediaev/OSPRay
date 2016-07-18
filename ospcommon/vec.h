@@ -297,6 +297,7 @@ namespace ospcommon {
   inline bool operator!=(const vec_t<T,4> &a, const vec_t<T,4> &b)
   { return !(a==b); }
 
+  /*! comparison operators; we need those to be able to put vec's in std::map etc @{ */
   template<typename T> 
   inline bool operator<(const vec_t<T,2> &a, const vec_t<T,2> &b)
   { 
@@ -321,6 +322,7 @@ namespace ospcommon {
                       ((a.y==b.y) && ((a.z< b.z) ||
                                       ((a.z==b.z) && (a.w < b.w)))))); 
   }
+  /*! @} */
 
   // 'anyLessThan' - return true if any component is less than the other vec's
   template<typename T> 
@@ -394,18 +396,18 @@ namespace ospcommon {
   // -------------------------------------------------------
   // binary functors
   // -------------------------------------------------------
-#define define_functor(f)						\
-  template<typename T>							\
-    inline vec_t<T,2> f(const vec_t<T,2> &a, const vec_t<T,2> &b)	\
-    { return vec_t<T,2>(f(a.x,b.x),f(a.y,b.y)); }			\
-  									\
-  template<typename T>							\
-    inline vec_t<T,3> f(const vec_t<T,3> &a, const vec_t<T,3> &b)	\
-    { return vec_t<T,3>(f(a.x,b.x),f(a.y,b.y),f(a.z,b.z)); }		\
-  									\
+#define define_functor(f)                                               \
   template<typename T>                                                  \
-    inline vec_t<T,4> f(const vec_t<T,4> &a, const vec_t<T,4> &b)	\
-    { return vec_t<T,4>(f(a.x,b.x),f(a.y,b.y),f(a.z,b.z),f(a.w,b.w)); }	\
+    inline vec_t<T,2> f(const vec_t<T,2> &a, const vec_t<T,2> &b)       \
+    { return vec_t<T,2>(f(a.x,b.x),f(a.y,b.y)); }                       \
+                                                                        \
+  template<typename T, int A>                                           \
+    inline vec_t<T,3,A> f(const vec_t<T,3,A> &a, const vec_t<T,3,A> &b) \
+    { return vec_t<T,3,A>(f(a.x,b.x),f(a.y,b.y),f(a.z,b.z)); }          \
+                                                                        \
+  template<typename T>                                                  \
+    inline vec_t<T,4> f(const vec_t<T,4> &a, const vec_t<T,4> &b)       \
+    { return vec_t<T,4>(f(a.x,b.x),f(a.y,b.y),f(a.z,b.z),f(a.w,b.w)); } \
   
   define_functor(min);
   define_functor(max);
@@ -504,12 +506,12 @@ namespace ospcommon {
   // -------------------------------------------------------
   // parsing from strings
   // -------------------------------------------------------
-  vec2f toVec2f(const char *ptr);
-  vec3f toVec3f(const char *ptr);
-  vec4f toVec4f(const char *ptr);
-  vec2i toVec2i(const char *ptr);
-  vec3i toVec3i(const char *ptr);
-  vec4i toVec4i(const char *ptr);
+  OSPCOMMON_INTERFACE vec2f toVec2f(const char *ptr);
+  OSPCOMMON_INTERFACE vec3f toVec3f(const char *ptr);
+  OSPCOMMON_INTERFACE vec4f toVec4f(const char *ptr);
+  OSPCOMMON_INTERFACE vec2i toVec2i(const char *ptr);
+  OSPCOMMON_INTERFACE vec3i toVec3i(const char *ptr);
+  OSPCOMMON_INTERFACE vec4i toVec4i(const char *ptr);
 
 
 } // ::ospcommon

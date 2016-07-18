@@ -19,9 +19,19 @@
 // ospray API
 #include "ospray/ospray.h"
 // ospcommon
-#include "common/box.h"
+#include "ospcommon/box.h"
 // std
 #include <vector>
+
+#ifdef _WIN32
+#  ifdef ospray_importer_EXPORTS
+#    define OSPIMPORTER_INTERFACE __declspec(dllexport)
+#  else
+#    define OSPIMPORTER_INTERFACE __declspec(dllimport)
+#  endif
+#else
+#  define OSPIMPORTER_INTERFACE
+#endif
 
 namespace ospray {
   namespace importer {
@@ -92,6 +102,7 @@ namespace ospray {
       vec3i subVolumeDimensions {-1};
       vec3i subVolumeSteps {-1};
       vec3i dimensions {-1};
+      vec3f scaleFactor{1};
 
       std::string voxelType;
     };
@@ -101,7 +112,7 @@ namespace ospray {
       std::vector<Volume *>   volume;
     };
 
-    Group *import(const std::string &fileName,
+    OSPIMPORTER_INTERFACE Group *import(const std::string &fileName,
                   Group *existingGroupToAddTo=nullptr);
   }
 

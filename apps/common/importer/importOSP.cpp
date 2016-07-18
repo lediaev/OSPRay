@@ -17,12 +17,11 @@
 // own
 #include "Importer.h"
 // ospcommon
-#include "common/FileName.h"
+#include "ospcommon/FileName.h"
 // tinyxml
 #include "TinyXML2.h"
 // std
 #include <stdexcept>
-#include <libgen.h>
 
 namespace ospray {
   namespace importer {
@@ -161,6 +160,14 @@ namespace ospray {
           ospSet1f(volume->handle, "samplingRate", volume->samplingRate);
           continue;
         }
+
+        // Volume scale factor.
+        if (!strcmp(node->ToElement()->Name(), "scaleFactor")) {
+          volume->scaleFactor = parseFloat3(node);
+          std::cout << "Got scaleFactor = " << volume->scaleFactor << std::endl;
+          ospSetVec3f(volume->handle, "scaleFactor", (osp::vec3f&)volume->scaleFactor);
+          continue;
+        }
         
         // Subvolume offset from origin within the full volume.
         if (!strcmp(node->ToElement()->Name(), "subvolumeOffsets")) {
@@ -199,21 +206,13 @@ namespace ospray {
       
       // Load the contents of the volume file if specified.
       if (volumeFilename != nullptr) {
-        
-        // Some implementations of 'dirname()' are destructive.
-        char *duplicateFilename = strdup(orgFileName.str().c_str());
-        
         // The volume file path is absolute.
         if (volumeFilename[0] == '/') 
           importVolume(volumeFilename, volume);
         else {
-          importVolume((std::string(dirname(duplicateFilename))
+          importVolume((orgFileName.path().str()
                         + "/" + volumeFilename).c_str(), volume);
         }
-        
-        // Free the temporary character array.
-        if (duplicateFilename != nullptr)
-          free(duplicateFilename);
       }
       
       group->volume.push_back(volume);

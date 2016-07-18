@@ -45,10 +45,14 @@ DisplayWallPO::Instance::Instance(DisplayWallPO *po, FrameBuffer *fb)
     const char *hostname = po->getParamString("hostname", "localhost");
     streamName = po->getParamString("streamName", "ospray");
 
+
     int rank=-1;
     //MPI_Comm_rank(MPI_COMM_WORLD,&rank);
 
-    std::cerr << "connecting to hostname " << hostname << " for stream name " << streamName << " from rank " << rank << std::endl;
+    //std::cerr << "connecting to hostname " << hostname << " for stream name " << streamName << " from rank " << rank << std::endl;
+
+    std::cerr << "connecting to host " << hostname << " for stream " << streamName << std::endl;
+
 
     // connect to DisplayCluster at given hostname.
    // mut_socket.lock();

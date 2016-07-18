@@ -1,3 +1,19 @@
+// ======================================================================== //
+// Copyright 2016 Intel Corporation                                         //
+//                                                                          //
+// Licensed under the Apache License, Version 2.0 (the "License");          //
+// you may not use this file except in compliance with the License.         //
+// You may obtain a copy of the License at                                  //
+//                                                                          //
+//     http://www.apache.org/licenses/LICENSE-2.0                           //
+//                                                                          //
+// Unless required by applicable law or agreed to in writing, software      //
+// distributed under the License is distributed on an "AS IS" BASIS,        //
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. //
+// See the License for the specific language governing permissions and      //
+// limitations under the License.                                           //
+// ======================================================================== //
+
 #include "OSPGlutViewer.h"
 
 using std::cout;
@@ -127,26 +143,31 @@ void OSPGlutViewer::reshape(const vec2i &newSize)
 
   m_fb.clear(OSP_FB_ACCUM);
 
+  PING;
+
   /*! for now, let's just attach the pixel op to the _main_ frame
       buffer - eventually we need to have a _second_ frame buffer
       of the proper (much higher) size, but for now let's just use
       the existing one... */
   if (m_useDisplayWall && displayWall.fb.handle() != m_fb.handle()) {
-      //PRINT(displayWall.size);
-      displayWall.fb =
-              ospray::cpp::FrameBuffer((const osp::vec2i&)displayWall.size,
-                                       OSP_FB_NONE,
-                                       //OSP_FB_SRGBA,
-                                       OSP_FB_COLOR | OSP_FB_DEPTH | OSP_FB_ACCUM);
+    PRINT(displayWall.size);
+    displayWall.fb =
+        ospray::cpp::FrameBuffer((const osp::vec2i&)displayWall.size,
+                                 OSP_FB_NONE,
+                                 OSP_FB_COLOR | OSP_FB_DEPTH | OSP_FB_ACCUM);
 
-      displayWall.fb.clear(OSP_FB_ACCUM);
+    displayWall.fb.clear(OSP_FB_ACCUM);
 
-      if (displayWall.po.handle() == nullptr) {
-          displayWall.po = ospray::cpp::PixelOp("display_wall");
-          displayWall.po.set("hostname", displayWall.hostname);
-          displayWall.po.set("streamName", displayWall.streamName);
-          displayWall.po.commit();
-      }
+    if (displayWall.po.handle() == nullptr) {
+#if OSPRAY_DISPLAY_WALD
+      displayWall.po = ospray::cpp::PixelOp("display_wald");
+#else
+      displayWall.po = ospray::cpp::PixelOp("display_wall");
+#endif
+      displayWall.po.set("hostname", displayWall.hostname);
+      displayWall.po.set("streamName", displayWall.streamName);
+      displayWall.po.commit();
+    }
 
       displayWall.fb.setPixelOp(displayWall.po);
   }
@@ -282,8 +303,9 @@ void OSPGlutViewer::display()
   }
 
   m_renderer.renderFrame(m_fb, OSP_FB_COLOR | OSP_FB_ACCUM);
-  if (m_useDisplayWall)
+  if (m_useDisplayWall) {
     m_renderer.renderFrame(displayWall.fb, OSP_FB_COLOR | OSP_FB_ACCUM);
+  }
   ++m_accumID;
 
   // set the glut3d widget's frame buffer to the opsray frame buffer,

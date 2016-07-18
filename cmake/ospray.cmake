@@ -21,6 +21,8 @@ SET(OSPRAY_DIR ${PROJECT_SOURCE_DIR})
 # arch-specific cmd-line flags for various arch and compiler configs
 
 SET(OSPRAY_TILE_SIZE 64 CACHE INT "Tile size")
+SET_PROPERTY(CACHE OSPRAY_TILE_SIZE PROPERTY STRINGS 8 16 32 64 128 256 512)
+
 SET(OSPRAY_PIXELS_PER_JOB 64 CACHE INT
     "Must be multiple of largest vector width *and* <= OSPRAY_TILE_SIZE")
 
@@ -73,6 +75,11 @@ MACRO(CONFIGURE_OSPRAY)
     SET(OSPRAY_DEBUG_BUILD          OFF)
     SET(OSPRAY_RELWITHDEBINFO_BUILD OFF)
     SET(OSPRAY_RELEASE_BUILD        ON )
+  ENDIF()
+
+  IF (WIN32)
+    # avoid problematic min/max defines of windows.h
+    ADD_DEFINITIONS(-DNOMINMAX)
   ENDIF()
 
   IF (OSPRAY_TARGET STREQUAL "mic")
@@ -181,16 +188,6 @@ MACRO(CONFIGURE_OSPRAY)
 
   INCLUDE(${PROJECT_SOURCE_DIR}/cmake/ispc.cmake)
 
-  INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR})
-  INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/ospray/include)
-
-  INCLUDE_DIRECTORIES_ISPC(${PROJECT_SOURCE_DIR})
-  INCLUDE_DIRECTORIES_ISPC(${PROJECT_SOURCE_DIR}/ospray/include)
-
-  # for auto-generated cmakeconfig etc
-  INCLUDE_DIRECTORIES(${PROJECT_BINARY_DIR})
-  INCLUDE_DIRECTORIES_ISPC(${PROJECT_BINARY_DIR})
-
 ENDMACRO()
 
 ## Target creation macros ##
@@ -269,6 +266,8 @@ MACRO(OSPRAY_INSTALL_LIBRARY name)
   )
 ENDMACRO()
 
+# only use for executables required for OSPRay functionality, e.g. the MPI
+# worker, because these go into install component 'lib'
 MACRO(OSPRAY_INSTALL_EXE _name)
   SET(name ${_name}${OSPRAY_EXE_SUFFIX})
   # use OSPRAY_LIB_SUFFIX for COMPONENT to get lib_mic and not lib.mic
@@ -284,6 +283,96 @@ MACRO(OSPRAY_SET_LIBRARY_VERSION _name)
   SET(name ${_name}${OSPRAY_LIB_SUFFIX})
   SET_TARGET_PROPERTIES(${name}
     PROPERTIES VERSION ${OSPRAY_VERSION} SOVERSION ${OSPRAY_SOVERSION})
+ENDMACRO()
+
+## Conveniance macro for creating OSPRay libraries ##
+# Usage
+#
+#   OSPRAY_CREATE_LIBRARY(<name> source1 [source2 ...]
+#                         [LINK lib1 [lib2 ...]])
+#
+# will create and install shared library 'ospray_<name>' from 'sources' with
+# version OSPRAY_[SO]VERSION and optionally link against 'libs'
+
+MACRO(OSPRAY_CREATE_LIBRARY name)
+  SET(LIBRARY_NAME ospray_${name})
+  SET(LIBRARY_SOURCES "")
+  SET(LINK_LIBS "")
+
+  SET(CURRENT_LIST LIBRARY_SOURCES)
+  FOREACH(arg ${ARGN})
+    IF (${arg} STREQUAL "LINK")
+      SET(CURRENT_LIST LINK_LIBS)
+    ELSE()
+      LIST(APPEND ${CURRENT_LIST} ${arg})
+    ENDIF ()
+  ENDFOREACH()
+ 
+  OSPRAY_ADD_LIBRARY(${LIBRARY_NAME} SHARED ${LIBRARY_SOURCES})
+  OSPRAY_LIBRARY_LINK_LIBRARIES(${LIBRARY_NAME} ${LINK_LIBS})
+  OSPRAY_SET_LIBRARY_VERSION(${LIBRARY_NAME})
+  OSPRAY_INSTALL_LIBRARY(${LIBRARY_NAME})
+ENDMACRO()
+
+## Conveniance macro for creating OSPRay applications ##
+# Usage
+#
+#   OSPRAY_CREATE_APPLICATION(<name> source1 [source2 ...]
+#                             [LINK lib1 [lib2 ...]])
+#
+# will create and install application 'osp<name>' from 'sources' with version
+# OSPRAY_VERSION and optionally link against 'libs'
+
+MACRO(OSPRAY_CREATE_APPLICATION name)
+  SET(APP_NAME osp${name})
+  SET(APP_SOURCES "")
+  SET(LINK_LIBS "")
+
+  SET(CURRENT_LIST APP_SOURCES)
+  FOREACH(arg ${ARGN})
+    IF (${arg} STREQUAL "LINK")
+      SET(CURRENT_LIST LINK_LIBS)
+    ELSE()
+      LIST(APPEND ${CURRENT_LIST} ${arg})
+    ENDIF ()
+  ENDFOREACH()
+ 
+  ADD_EXECUTABLE(${APP_NAME} ${APP_SOURCES})
+  TARGET_LINK_LIBRARIES(${APP_NAME} ${LINK_LIBS})
+  IF (WIN32)
+    SET_TARGET_PROPERTIES(${APP_NAME} PROPERTIES VERSION ${OSPRAY_VERSION})
+  ENDIF()
+  INSTALL(TARGETS ${APP_NAME}
+    DESTINATION ${CMAKE_INSTALL_BINDIR}
+    COMPONENT apps
+  )
+ENDMACRO()
+
+## Conveniance macro for installing OSPRay headers ##
+# Usage
+#
+#   OSPRAY_INSTALL_SDK_HEADERS(header1 [header2 ...] [DESTINATION destination])
+#
+# will install headers into ${CMAKE_INSTALL_PREFIX}/ospray/SDK/${destination},
+# where destination is optional.
+
+MACRO(OSPRAY_INSTALL_SDK_HEADERS)
+  SET(HEADERS "")
+  SET(DESTINATION "")
+
+  SET(CURRENT_LIST HEADERS)
+  FOREACH(arg ${ARGN})
+    IF (${arg} STREQUAL "DESTINATION")
+      SET(CURRENT_LIST DESTINATION)
+    ELSE()
+      LIST(APPEND ${CURRENT_LIST} ${arg})
+    ENDIF ()
+  ENDFOREACH()
+
+  INSTALL(FILES ${HEADERS}
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ospray/SDK/${DESTINATION}
+    COMPONENT devel
+  )
 ENDMACRO()
 
 ## Compiler configuration macro ##

@@ -16,39 +16,12 @@
 
 CONFIGURE_OSPRAY()
 
-set(LIBRARY_NAME ospray_common)
+OSPRAY_CREATE_LIBRARY(tfn tfn_lib.cpp LINK ospray_common)
 
-SET(CMAKE_THREAD_PREFER_PTHREAD TRUE)
-FIND_PACKAGE(Threads REQUIRED)
-
-OSPRAY_ADD_LIBRARY(${LIBRARY_NAME} SHARED
-  common.cpp
-  FileName.cpp
-  sysinfo.cpp
-  malloc.cpp
-  library.cpp
-  thread.cpp
-  vec.cpp
-
-  AffineSpace.h
-  box.h
-  constants.h
-  intrinsics.h
-  LinearSpace.h
-  math.h
-  platform.h
-  Quaternion.h
-  RefCount.h
-  vec.h
+OSPRAY_CREATE_APPLICATION(CvtParaViewTfcn
+  convertParaViewTfcn.cpp
+  jsoncpp.cpp
+LINK
+  ospray_common
+  ospray_tfn
 )
-
-OSPRAY_LIBRARY_LINK_LIBRARIES(${LIBRARY_NAME}
-  ${CMAKE_THREAD_LIBS_INIT}
-  ${CMAKE_DL_LIBS}
-)
-IF (WIN32)
-  OSPRAY_LIBRARY_LINK_LIBRARIES(${LIBRARY_NAME} ws2_32)
-ENDIF()
-
-OSPRAY_SET_LIBRARY_VERSION(${LIBRARY_NAME})
-OSPRAY_INSTALL_LIBRARY(${LIBRARY_NAME})

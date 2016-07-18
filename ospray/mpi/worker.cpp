@@ -14,26 +14,26 @@
 // limitations under the License.                                           //
 // ======================================================================== //
 
-#include "ospray/mpi/MPICommon.h"
-#include "ospray/mpi/MPIDevice.h"
-#include "ospray/mpi/CommandStream.h"
-#include "ospray/common/Model.h"
-#include "ospray/common/Data.h"
-#include "ospray/common/Library.h"
-#include "ospray/common/Model.h"
-#include "ospray/geometry/TriangleMesh.h"
-#include "ospray/render/Renderer.h"
-#include "ospray/camera/Camera.h"
-#include "ospray/volume/Volume.h"
-#include "ospray/lights/Light.h"
-#include "ospray/texture/Texture2D.h"
-#include "ospray/fb/LocalFB.h"
-#include "ospray/mpi/async/CommLayer.h"
-#include "ospray/mpi/DistributedFrameBuffer.h"
-#include "ospray/mpi/MPILoadBalancer.h"
-#include "ospray/transferFunction/TransferFunction.h"
+#include "mpi/MPICommon.h"
+#include "mpi/MPIDevice.h"
+#include "mpi/CommandStream.h"
+#include "common/Model.h"
+#include "common/Data.h"
+#include "common/Library.h"
+#include "common/Model.h"
+#include "geometry/TriangleMesh.h"
+#include "render/Renderer.h"
+#include "camera/Camera.h"
+#include "volume/Volume.h"
+#include "lights/Light.h"
+#include "texture/Texture2D.h"
+#include "fb/LocalFB.h"
+#include "mpi/async/CommLayer.h"
+#include "mpi/DistributedFrameBuffer.h"
+#include "mpi/MPILoadBalancer.h"
+#include "transferFunction/TransferFunction.h"
 
-#include "ospray/mpi/MPIDevice.h"
+#include "mpi/MPIDevice.h"
 
 // std
 #include <algorithm>
@@ -63,6 +63,8 @@ namespace ospray {
     using std::cout;
     using std::endl;
 
+    OSPRAY_INTERFACE void runWorker();
+
     void embreeErrorFunc(const RTCError code, const char* str)
     {
       std::cerr << "#osp: embree internal error " << code << " : "
@@ -79,7 +81,7 @@ namespace ospray {
     */
     void runWorker()
     {
-      mpi::MPIDevice *device = (mpi::MPIDevice *)ospray::api::Device::current;
+      Ref<mpi::MPIDevice> device = ospray::api::Device::current.dynamicCast<mpi::MPIDevice>();
 
       // initialize embree. (we need to do this here rather than in
       // ospray::init() because in mpi-mode the latter is also called
@@ -603,6 +605,8 @@ namespace ospray {
           assert(fb);
           assert(po);
           fb->pixelOp = po->createInstance(fb,fb->pixelOp.ptr);
+          if (!fb->pixelOp)
+            std::cout << "#osp:mpi: WARNING. display op did not create an instance!" << std::endl;
         } break;
 
         case ospray::CMD_SET_REGION: {
@@ -781,6 +785,12 @@ namespace ospray {
           NOTIMPLEMENTED;
         } break;
 
+          // ==================================================================
+        case ospray::CMD_FINALIZE: {
+          // ==================================================================
+          async::shutdown();
+          std::exit(0);
+        } break;
           // ==================================================================
         default:
           // ==================================================================

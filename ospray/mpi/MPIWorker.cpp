@@ -14,8 +14,8 @@
 // limitations under the License.                                           //
 // ======================================================================== //
 
-#include "ospray/mpi/MPICommon.h"
-#include "ospray/mpi/MPIDevice.h"
+#include "mpi/MPICommon.h"
+#include "mpi/MPIDevice.h"
 
 #include "ospray/ospray.h"
 
@@ -25,7 +25,7 @@ namespace ospray {
     using std::cout;
     using std::endl;
 
-    void runWorker();
+    OSPRAY_INTERFACE void runWorker();
 
     void workerMain(int ac, const char **av)
     {

@@ -14,15 +14,15 @@
 // limitations under the License.                                           //
 // ======================================================================== //
 
-#include "ospray/common/OSPCommon.h"
-#include "ospray/include/ospray/ospray.h"
-#include "ospray/render/Renderer.h"
-#include "ospray/camera/Camera.h"
-#include "ospray/common/Material.h"
-#include "ospray/volume/Volume.h"
-#include "ospray/transferFunction/TransferFunction.h"
+#include "common/OSPCommon.h"
+#include "include/ospray/ospray.h"
+#include "render/Renderer.h"
+#include "camera/Camera.h"
+#include "common/Material.h"
+#include "volume/Volume.h"
+#include "transferFunction/TransferFunction.h"
 #include "LocalDevice.h"
-#include "ospray/common/Core.h"
+#include "common/Core.h"
 
 #ifdef _WIN32
 #  include <process.h> // for getpid
@@ -70,7 +70,7 @@ std::string getPidString() {
   return s;
 }
 
-#define ASSERT_DEVICE() if (ospray::api::Device::current == NULL)       \
+#define ASSERT_DEVICE() if (!ospray::api::Device::current)              \
     throw std::runtime_error("OSPRay not yet initialized "              \
                              "(most likely this means you tried to "    \
                              "call an ospray API function before "      \
@@ -85,22 +85,24 @@ extern "C" void ospInit(int *_ac, const char **_av)
                              "(did you call ospInit twice?)");
   }
 
-  auto *nThreads = getenv("OSPRAY_THREADS");
-  if (nThreads) {
-    numThreads = atoi(nThreads);
+  auto OSPRAY_THREADS = getEnvVar<int>("OSPRAY_THREADS");
+  if (OSPRAY_THREADS.first) {
+    numThreads = OSPRAY_THREADS.second;
   }
 
   /* call ospray::init to properly parse common args like
      --osp:verbose, --osp:debug etc */
   ospray::init(_ac,&_av);
 
-  const char *OSP_MPI_LAUNCH_FROM_ENV = getenv("OSPRAY_MPI_LAUNCH");
+  auto OSP_MPI_LAUNCH = getEnvVar<std::string>("OSPRAY_MPI_LAUNCH");
 
-  if (OSP_MPI_LAUNCH_FROM_ENV) {
+  if (OSP_MPI_LAUNCH.first) {
 #ifdef OSPRAY_MPI
-    std::cout << "#osp: launching ospray mpi ring - make sure that mpd is running" << std::endl;
+    std::cout << "#osp: launching ospray mpi ring -"
+              << " make sure that mpd is running" << std::endl;
     ospray::api::Device::current
-      = mpi::createMPI_LaunchWorkerGroup(_ac,_av,OSP_MPI_LAUNCH_FROM_ENV);
+      = mpi::createMPI_LaunchWorkerGroup(_ac,_av,
+                                         OSP_MPI_LAUNCH.second.c_str());
 #else
     throw std::runtime_error("OSPRay MPI support not compiled in");
 #endif
@@ -172,7 +174,7 @@ extern "C" void ospInit(int *_ac, const char **_av)
   }
 
   // no device created on cmd line, yet, so default to localdevice
-  if (ospray::api::Device::current == NULL) {
+  if (!ospray::api::Device::current) {
     ospray::api::Device::current = new ospray::api::LocalDevice(_ac,_av);
   }
 }
@@ -701,8 +703,9 @@ extern "C" void ospPick(OSPPickResult *result,
   MPI_Init(), NOT "in addition to" */
 extern "C" void ospdMpiInit(int *ac, char ***av, OSPDRenderMode mode)
 {
-  if (ospray::api::Device::current != NULL)
+  if (!ospray::api::Device::current) {
     throw std::runtime_error("#osp:mpi: OSPRay already initialized!?");
+  }
   ospray::mpi::initDistributedAPI(ac,av,mode);
 }
 

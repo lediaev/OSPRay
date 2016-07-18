@@ -30,7 +30,7 @@
 
 
 // ospray
-#include "ospray/fb/PixelOp.h"
+#include "fb/PixelOp.h"
 
 // DisplayCluster
 //class DcSocket;

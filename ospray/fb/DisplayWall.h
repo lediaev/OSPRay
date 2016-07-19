@@ -45,7 +45,9 @@ namespace ospray {
       int frameIndex;
 
       //! DisplayCluster socket.
+      #ifdef OSPRAY_DISPLAYCLUSTER
       DcSocket *dcSocket;
+      #endif
 
       //! DisplayCluster stream name.
       std::string streamName;

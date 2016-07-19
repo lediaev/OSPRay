@@ -15,9 +15,9 @@
 // ======================================================================== //
 
 
-
-
+#ifdef OSPRAY_DISPLAYCLUSTER
 # include "dcStream.h"
+#endif
 
 // ospray
 #include "DisplayWall.h"
@@ -39,7 +39,13 @@ std::mutex mut_socket;
 namespace ospray {
 
 DisplayWallPO::Instance::Instance(DisplayWallPO *po, FrameBuffer *fb)
-    : fb(fb), frameIndex(0), dcSocket(NULL), streamName("")
+    : fb(fb), frameIndex(0), 
+#ifdef OSPRAY_DISPLAYCLUSTER
+    dcSocket(NULL),
+#else
+   // void *,
+#endif 
+    streamName("")
 {
 #ifdef OSPRAY_DISPLAYCLUSTER
     const char *hostname = po->getParamString("hostname", "localhost");
